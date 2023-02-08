@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+eureka:
+  instance:
+    hostname: gateway
+  client:
+    service-url:
+      defaultZone: http://eureka:8761/eureka/
+
+logging:
+  level:
+    org:
+      springframework: debug
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      routes:
+        - id: song
+          uri: lb://SONG-SERVICE
+          predicates:
+            - Path=/api/v1/song**,/api/v1/song/**
+        - id: resource
+          uri: lb://RESOURCE-SERVICE
+          predicates:
+            - Path=/api/v1/resource**,/api/v1/resource/**
+        - id: eureka
+          uri: http://eureka:8761
+          predicates:
+            - Path=/es/**,/es**
+          filters:
+            - RewritePath=es(?<segment>.*),/$\{segment}
+        - id: eureka-resources
+          uri: http://eureka:8761
+          predicates:
+            - Path=/eureka/**,/eureka**

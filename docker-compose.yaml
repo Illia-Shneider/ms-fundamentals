@@ -1,0 +1,112 @@
+version: '3.9'
+
+services:
+  gateway:
+    container_name: Gateway
+    build: ./gateway
+    ports:
+      - '8080:8080'
+    networks:
+      - ms-network
+  eureka:
+    container_name: Eureka
+    build: ./eureka-server
+#    ports:
+#      - '8761:8761'
+    networks:
+      - ms-network
+  minio:
+    container_name: Minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=supersecret
+    image: quay.io/minio/minio:latest
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - ./minio:/data
+    restart: unless-stopped
+    networks:
+      - ms-network
+  config:
+    container_name: Config
+    build: ./config
+    volumes:
+      - ./config/config-files:/app/config-files
+#    ports:
+#      - '8888:8888'
+    networks:
+      - ms-network
+#    healthcheck:
+#      test: "curl --fail --silent localhost:8888/actuator/health | jq --exit-status -n 'inputs | if has(\"status\") then .status==\"UP\" else false end' > /dev/null || exit 1"
+#      interval: 20s
+#      timeout: 5s
+#      retries: 3
+#      start_period: 15s
+  resource:
+    container_name: Resource
+    build: ./resource
+    networks:
+      - ms-network
+#    ports:
+#          - '5005:5005'
+    links:
+      - "config:config"
+#    environment:
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    depends_on:
+      db:
+        condition: service_started
+      minio:
+        condition: service_started
+  song:
+    container_name: Song
+    build: ./song
+#    ports:
+#      - '8081:8080'
+    networks:
+      - ms-network
+#    ports:
+#      - '5006:5006'
+#      - '8081:8080'
+    links:
+      - "config:config"
+#    environment:
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
+    depends_on:
+      db:
+        condition: service_started
+  resource-processor:
+    container_name: Processor
+    build: ./processor
+    networks:
+      - ms-network
+    links:
+      - "config:config"
+    depends_on:
+      db:
+        condition: service_started
+  db:
+    container_name: Postgres
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ms
+      POSTGRES_PASSWORD: supersecret
+    volumes:
+      - ./pg:/var/lib/postgresql/data
+    networks:
+      - ms-network
+  db-admin:
+      container_name: Adminer
+      image: adminer
+      restart: always
+#      ports:
+#        - '8082:8080'
+      networks:
+        - ms-network
+networks:
+  ms-network:
+    name: ms-network
