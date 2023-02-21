@@ -11,8 +11,8 @@ services:
       - ms-network
   kafka:
     image: docker.io/bitnami/kafka:3.4
-    ports:
-      - "9092:9092"
+#    ports:
+#      - "9092:9092"
     volumes:
       - "./kafka/kafka_data:/bitnami"
     environment:
@@ -43,9 +43,9 @@ services:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=supersecret
     image: quay.io/minio/minio:latest
-    ports:
-      - '9000:9000'
-      - '9001:9001'
+#    ports:
+#      - '9000:9000'
+#      - '9001:9001'
     volumes:
       - ./minio:/data
     restart: unless-stopped
@@ -106,11 +106,11 @@ services:
       - ms-network
     links:
       - "config:config"
-    ports:
-      - '5007:5007'
-      - '8081:8080'
-    environment:
-      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
+#    ports:
+#      - '5007:5007'
+#      - '8081:8080'
+#    environment:
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
     depends_on:
       db:
         condition: service_started
@@ -129,8 +129,8 @@ services:
       container_name: Adminer
       image: adminer
       restart: always
-      ports:
-        - '8082:8080'
+#      ports:
+#        - '8082:8080'
       networks:
         - ms-network
 networks:
