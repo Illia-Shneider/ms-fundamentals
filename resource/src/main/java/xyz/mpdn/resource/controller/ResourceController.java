@@ -1,6 +1,8 @@
 package xyz.mpdn.resource.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.validator.constraints.Length;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,17 +31,15 @@ import java.util.*;
 @Validated
 @RestController
 @RequestMapping("/api/v1/resource")
+@RequiredArgsConstructor
 public class ResourceController {
     private final ResourceRepository resourceRepository;
     private final StorageService storageService;
 
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
     @Value("${spring.application.name}")
     private String serviceName;
-
-    public ResourceController(ResourceRepository resourceRepository, StorageService storageService) {
-        this.resourceRepository = resourceRepository;
-        this.storageService = storageService;
-    }
 
     @GetMapping
     public Map<String, String> getServiceName() {
@@ -147,6 +148,8 @@ public class ResourceController {
         var id = resourceRepository
                 .save(resource)
                 .getId();
+
+        kafkaTemplate.send("resource", id.toString());
 
         return new HashMap<>() {{
             put("id", id);
