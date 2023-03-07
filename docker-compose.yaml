@@ -1,6 +1,27 @@
 version: '3.9'
 
 services:
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3.8
+    volumes:
+      - "./kafka/zookeeper_data:/bitnami"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - ms-network
+  kafka:
+    image: docker.io/bitnami/kafka:3.4
+#    ports:
+#      - "9092:9092"
+    volumes:
+      - "./kafka/kafka_data:/bitnami"
+    environment:
+        - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+        - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+        - zookeeper
+    networks:
+      - ms-network
   gateway:
     container_name: Gateway
     build: ./gateway
@@ -22,9 +43,9 @@ services:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=supersecret
     image: quay.io/minio/minio:latest
-    ports:
-      - '9000:9000'
-      - '9001:9001'
+#    ports:
+#      - '9000:9000'
+#      - '9001:9001'
     volumes:
       - ./minio:/data
     restart: unless-stopped
@@ -85,6 +106,11 @@ services:
       - ms-network
     links:
       - "config:config"
+#    ports:
+#      - '5007:5007'
+#      - '8081:8080'
+#    environment:
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
     depends_on:
       db:
         condition: service_started
