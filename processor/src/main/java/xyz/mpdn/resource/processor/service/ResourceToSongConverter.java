@@ -25,14 +25,15 @@ import java.util.stream.Stream;
 public class ResourceToSongConverter {
     private final ObjectMapper mapper;
 
-    public Song convert(InputStream stream) throws TikaException, IOException, SAXException {
-        var handler = new BodyContentHandler();
-        var metadata = new Metadata();
-        var parseContext = new ParseContext();
+    private final BodyContentHandler bodyContentHandler;
+    private final Metadata metadata;
+    private final ParseContext parseContext;
+    private final Mp3Parser mp3Parser;
 
-        //Mp3 parser
-        Mp3Parser Mp3Parser = new Mp3Parser();
-        Mp3Parser.parse(stream, handler, metadata, parseContext);
+
+    public Song convert(InputStream stream) throws TikaException, IOException, SAXException {
+
+        mp3Parser.parse(stream, bodyContentHandler, metadata, parseContext);
 
         var metadataMap = Stream.of(metadata.names())
                 .collect(Collectors.toMap(Function.identity(), metadata::get));
