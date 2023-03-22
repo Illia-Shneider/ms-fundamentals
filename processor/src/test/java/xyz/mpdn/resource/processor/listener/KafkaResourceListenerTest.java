@@ -8,6 +8,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.xml.sax.SAXException;
+import xyz.mpdn.resource.processor.listener.KafkaResourceListener;
 import xyz.mpdn.resource.processor.service.ResourceProcessor;
 
 import java.io.IOException;

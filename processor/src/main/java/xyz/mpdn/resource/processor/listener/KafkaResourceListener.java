@@ -14,7 +14,7 @@ public class KafkaResourceListener {
     private final ResourceProcessor resourceProcessor;
 
     @KafkaListener(topics = "resource", groupId = "ms_fundamentals")
-    void listener(String id) {
+    public void listener(String id) {
         log.info("Resource processing is triggered for : {}", id);
 
         try {

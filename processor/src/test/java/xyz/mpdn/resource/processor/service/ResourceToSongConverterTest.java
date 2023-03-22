@@ -14,6 +14,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.xml.sax.SAXException;
 import xyz.mpdn.resource.processor.dto.Song;
+import xyz.mpdn.resource.processor.service.ResourceToSongConverter;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
