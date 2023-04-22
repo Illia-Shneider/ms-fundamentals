@@ -1,4 +1,4 @@
-package xyz.mpdn.resource.processor.service;
+package xyz.mpdn.resource.processor.unit.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.tika.exception.TikaException;

@@ -1,4 +1,4 @@
-package xyz.mpdn.resource.integration;
+package xyz.mpdn.resource.processor.integration;
 
 import org.apache.tika.exception.TikaException;
 import org.junit.jupiter.api.BeforeEach;

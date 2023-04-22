@@ -1,4 +1,4 @@
-package xyz.mpdn.resource.processor.config;
+package xyz.mpdn.resource.processor.unit.config;
 
 import org.apache.kafka.common.serialization.Deserializer;
 import org.junit.jupiter.api.Test;
@@ -13,6 +13,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import xyz.mpdn.resource.processor.config.KafkaConsumerConfig;
 
 import java.util.HashMap;
 import java.util.function.Supplier;

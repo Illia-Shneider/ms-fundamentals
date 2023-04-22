@@ -1,10 +1,11 @@
-package xyz.mpdn.resource.processor.config;
+package xyz.mpdn.resource.processor.unit.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.junit.jupiter.api.Test;
+import xyz.mpdn.resource.processor.config.KafkaTopicConfig;
 
 class KafkaTopicConfigTest {
     /**
