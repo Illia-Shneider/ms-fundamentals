@@ -51,6 +51,25 @@ services:
     restart: unless-stopped
     networks:
       - ms-network
+  db:
+    container_name: Postgres
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ms
+      POSTGRES_PASSWORD: supersecret
+    volumes:
+      - ./pg:/var/lib/postgresql/data
+    networks:
+      - ms-network
+  db-admin:
+    container_name: Adminer
+    image: adminer
+    restart: always
+    ports:
+      - '8082:8080'
+    networks:
+      - ms-network
   config:
     container_name: Config
     build: ./config
@@ -66,6 +85,9 @@ services:
 #      timeout: 5s
 #      retries: 3
 #      start_period: 15s
+
+############### SERVICES ################
+
   resource:
     container_name: Resource
     build: ./resource
@@ -114,25 +136,18 @@ services:
     depends_on:
       db:
         condition: service_started
-  db:
-    container_name: Postgres
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_USER: ms
-      POSTGRES_PASSWORD: supersecret
-    volumes:
-      - ./pg:/var/lib/postgresql/data
+  storage:
+    container_name: Storage
+    build: ./storage
     networks:
       - ms-network
-  db-admin:
-      container_name: Adminer
-      image: adminer
-      restart: always
-#      ports:
-#        - '8082:8080'
-      networks:
-        - ms-network
+    links:
+      - "config:config"
+    ports:
+#      - '5008:5008'
+      - '8081:8080'
+    #    environment:
+    #      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5008
 networks:
   ms-network:
     name: ms-network
