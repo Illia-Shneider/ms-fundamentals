@@ -1,7 +1,6 @@
 package xyz.mpdn.resource.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.validator.constraints.Length;
@@ -19,8 +18,10 @@ import xyz.mpdn.resource.component.HTTPRequestToMultipartFileAdapter;
 import xyz.mpdn.resource.entity.Resource;
 import xyz.mpdn.resource.exception.HTTPInternalServerErrorException;
 import xyz.mpdn.resource.exception.HTTPNotFoundException;
+import xyz.mpdn.resource.model.Storage.StorageType;
 import xyz.mpdn.resource.repository.ResourceRepository;
 import xyz.mpdn.resource.service.ResourceInfo;
+import xyz.mpdn.resource.service.S3Service;
 import xyz.mpdn.resource.service.StorageService;
 import xyz.mpdn.resource.validator.MimeType;
 
@@ -34,6 +35,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class ResourceController {
     private final ResourceRepository resourceRepository;
+    private final S3Service s3Service;
     private final StorageService storageService;
 
     private final KafkaTemplate<String, String> kafkaTemplate;
@@ -61,23 +63,22 @@ public class ResourceController {
         var rs = resources
                 .stream()
                 .filter(Objects::nonNull)
-                .peek(r -> uuids.add(r.getUuid()))
                 .toList();
 
         if (rs.size() < 1) throw new HTTPNotFoundException();
 
-        var deleted = storageService.delete(uuids);
+        List<Long> ids = new ArrayList<>();
 
-        var ids = rs
-                .stream()
-                .filter(r -> deleted.contains(r.getUuid()))
-                .map(Resource::getId)
-                .toList();
+        rs.forEach(r -> {
+                    try {
+                        s3Service.delete(r.getBucket(), r.getPath(), r.getUuid());
+                        ids.add(r.getId());
+                    }catch (Exception ignored){}
+                });
 
         resourceRepository.deleteAllById(ids);
 
         return new HashMap<>() {{
-
             put("ids", ids);
         }};
     }
@@ -85,16 +86,14 @@ public class ResourceController {
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     public ResponseEntity<InputStreamResource> getResource(@PathVariable("id") Optional<Resource> resource) {
 
-        var uuid = resource
-                .map(Resource::getUuid)
-                .orElseThrow(HTTPNotFoundException::new);
+        var rs = resource.orElseThrow(HTTPNotFoundException::new);
 
-        var size = storageService
-                .info(uuid)
+        var size = s3Service
+                .info(rs.getBucket(), rs.getPath(), rs.getUuid())
                 .map(ResourceInfo::size)
                 .orElseThrow(HTTPInternalServerErrorException::new);
 
-        var inputStream = storageService.get(uuid)
+        var inputStream = s3Service.get(rs.getBucket(), rs.getPath(), rs.getUuid())
                 .map(InputStreamResource::new)
                 .orElseThrow(HTTPInternalServerErrorException::new);
 
@@ -111,12 +110,10 @@ public class ResourceController {
             @RequestHeader HttpHeaders headers
     ) {
 
-        var uuid = resource
-                .map(Resource::getUuid)
-                .orElseThrow(HTTPNotFoundException::new);
+        var rs = resource.orElseThrow(HTTPNotFoundException::new);
 
-        var size = storageService
-                .info(uuid)
+        var size = s3Service
+                .info(rs.getBucket(), rs.getPath(), rs.getUuid())
                 .map(ResourceInfo::size)
                 .orElseThrow(HTTPInternalServerErrorException::new);
 
@@ -124,7 +121,7 @@ public class ResourceController {
         var rangeStart = range.getRangeStart(size);
         var rangeEnd = range.getRangeEnd(size);
 
-        var inputStream = storageService.get(uuid, rangeStart, rangeEnd)
+        var inputStream = s3Service.get(rs.getBucket(), rs.getPath(), rs.getUuid(), rangeStart, rangeEnd)
                 .map(InputStreamResource::new)
                 .orElseThrow(HTTPInternalServerErrorException::new);
 
@@ -139,11 +136,16 @@ public class ResourceController {
     @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
     public Map<String, ?> uploadResource(@MimeType("audio/mpeg") @RequestPart("file") MultipartFile file, Resource resource) throws IOException {
 
-        String uuid = storageService
-                .store(file.getInputStream(), file.getSize())
+        var storage = storageService.getStorage(StorageType.STAGING);
+
+        String uuid = s3Service
+                .store(storage.getBucket(), storage.getPath(), file.getInputStream(), file.getSize())
                 .orElseThrow(HTTPInternalServerErrorException::new);
 
-        resource.setUuid(uuid);
+        resource
+                .setUuid(uuid)
+                .setBucket(storage.getBucket())
+                .setPath(storage.getPath());
 
         var id = resourceRepository
                 .save(resource)
@@ -159,5 +161,27 @@ public class ResourceController {
     @PostMapping(consumes = {"audio/mpeg"})
     public Map<String, ?> uploadResource(HttpServletRequest request, Resource resource) throws IOException {
         return uploadResource(new HTTPRequestToMultipartFileAdapter(request), resource);
+    }
+
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Objects resourceProcessed(@PathVariable("id") Resource resource) {
+        var storage = storageService.getStorage(StorageType.PERMANENT);
+
+        boolean result = s3Service.move(
+                        resource.getBucket(),
+                        resource.getPath(),
+                        storage.getBucket(),
+                        storage.getPath(),
+                        resource.getUuid()
+                );
+
+        if(result) {
+            resource.setBucket(storage.getBucket())
+                    .setPath(storage.getPath());
+
+            resourceRepository.save(resource);
+        }
+
+        return null;
     }
 }

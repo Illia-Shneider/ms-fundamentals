@@ -93,5 +93,15 @@ public class ResourceProcessor {
 
         var response = postSong(song);
         log.debug("Song service response: {}", response);
+
+        var resourceServiceUrl = getServiceURI("resource-service");
+        log.debug("Resource service url: {}", resourceServiceUrl);
+
+        var headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        var request = new HttpEntity<>(song, headers);
+        template.exchange(String.format("%s/api/v1/resource/%s", resourceServiceUrl, resourceId), HttpMethod.PUT, request, Void.class);
+
     }
 }

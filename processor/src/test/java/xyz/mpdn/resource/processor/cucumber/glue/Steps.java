@@ -103,6 +103,12 @@ public class Steps {
                                 .withBody("Hello world!")));
 
         stubFor(
+                put(urlMatching("/api/v1/resource/(\\d+)"))
+                        .willReturn(aResponse()
+                                .withHeader("Content-Type", "application/octet-stream")
+                                .withBody("")));
+
+        stubFor(
                 post("/api/v1/song")
                         .withRequestBody(matchingJsonPath("$[?(@.resourceId == 41)]"))
                         .willReturn(ok())
