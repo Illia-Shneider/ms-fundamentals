@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWireMock(port = 0)
 @Slf4j
-class StorageServiceTest {
+class CircuitBreakerTest {
 
     @Value("${wiremock.server.port}")
     String wiremock_port;
