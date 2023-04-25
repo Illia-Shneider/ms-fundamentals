@@ -35,7 +35,7 @@ public class StorageService {
     public Storage getStorage(StorageType storageType) {
 
         var storageServiceUrl = getServiceURI();
-        log.debug("Resource service url: {}", storageServiceUrl);
+        log.debug("Storage service url: {}", storageServiceUrl);
 
         var storages = template.exchange(
                 String.format("%s/api/v1/storage", storageServiceUrl),
