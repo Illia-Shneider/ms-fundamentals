@@ -34,6 +34,9 @@ public class KafkaProducerConfig {
 
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> producerFactory) {
-        return new KafkaTemplate<>(producerFactory);
+//        return new KafkaTemplate<>(producerFactory);
+        KafkaTemplate<String, String> stringStringKafkaTemplate = new KafkaTemplate<>(producerFactory);
+        stringStringKafkaTemplate.setObservationEnabled(true);//trying out with
+        return stringStringKafkaTemplate;
     }
 }

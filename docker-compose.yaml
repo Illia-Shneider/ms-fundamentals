@@ -2,14 +2,19 @@ version: '3.9'
 
 services:
   zookeeper:
+    container_name: Zookeeper
     image: docker.io/bitnami/zookeeper:3.8
     volumes:
-      - "./kafka/zookeeper_data:/bitnami"
+      - "./kafka/zookeeper_bitnami:/bitnami"
+      - "./kafka/zookeeper_data:/var/lib/zookeeper/data"
+      - "./kafka/zookeeper_log:/var/lib/zookeeper/log"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     networks:
       - ms-network
+    restart: unless-stopped
   kafka:
+    container_name: Kafka
     image: docker.io/bitnami/kafka:3.4
 #    ports:
 #      - "9092:9092"
@@ -22,13 +27,20 @@ services:
         - zookeeper
     networks:
       - ms-network
+    restart: unless-stopped
   gateway:
     container_name: Gateway
+    volumes:
+      - ./gateway/src/main/resources/application.yml:/app/application.yml
     build: ./gateway
     ports:
       - '8080:8080'
+      - '5006:5006'
     networks:
       - ms-network
+    environment:
+      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
+    restart: unless-stopped
   eureka:
     container_name: Eureka
     build: ./eureka-server
@@ -36,6 +48,7 @@ services:
 #      - '8761:8761'
     networks:
       - ms-network
+    restart: unless-stopped
   minio:
     container_name: Minio
     command: server /data --console-address ":9001"
@@ -65,7 +78,7 @@ services:
   db-admin:
     container_name: Adminer
     image: adminer
-    restart: always
+    restart: unless-stopped
     ports:
       - '8082:8080'
     networks:
@@ -79,26 +92,170 @@ services:
 #      - '8888:8888'
     networks:
       - ms-network
+    restart: unless-stopped
 #    healthcheck:
 #      test: "curl --fail --silent localhost:8888/actuator/health | jq --exit-status -n 'inputs | if has(\"status\") then .status==\"UP\" else false end' > /dev/null || exit 1"
 #      interval: 20s
 #      timeout: 5s
 #      retries: 3
 #      start_period: 15s
+################# ELK ###################
 
-############### SERVICES ################
+  setup:
+    build:
+      context: elk/setup/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    init: true
+    volumes:
+      - ./elk/setup/entrypoint.sh:/entrypoint.sh:ro,Z
+      - ./elk/setup/lib.sh:/lib.sh:ro,Z
+      - ./elk/setup/roles:/roles:ro,Z
+      - setup:/state:Z
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+      METRICBEAT_INTERNAL_PASSWORD: ${METRICBEAT_INTERNAL_PASSWORD:-}
+      FILEBEAT_INTERNAL_PASSWORD: ${FILEBEAT_INTERNAL_PASSWORD:-}
+      HEARTBEAT_INTERNAL_PASSWORD: ${HEARTBEAT_INTERNAL_PASSWORD:-}
+      MONITORING_INTERNAL_PASSWORD: ${MONITORING_INTERNAL_PASSWORD:-}
+      BEATS_SYSTEM_PASSWORD: ${BEATS_SYSTEM_PASSWORD:-}
+    networks:
+      - ms-network
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    container_name: Elasticsearch
+    build:
+      context: elk/elasticsearch/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./elk/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro,Z
+      - elasticsearch:/usr/share/elasticsearch/data:Z
+#    ports:
+#      - 9200:9200
+#      - 9300:9300
+    environment:
+      node.name: elasticsearch
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      # Bootstrap password.
+      # Used to initialize the keystore during the initial startup of
+      # Elasticsearch. Ignored on subsequent runs.
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+      # Use single node discovery in order to disable production mode and avoid bootstrap checks.
+      # see: https://www.elastic.co/guide/en/elasticsearch/reference/current/bootstrap-checks.html
+      discovery.type: single-node
+      xpack.security.enabled: false
+    networks:
+      - ms-network
+    restart: unless-stopped
+
+  logstash:
+    container_name: Logstash
+    build:
+      context: elk/logstash/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./elk/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro,Z
+      - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro,Z
+#    ports:
+#      - 5044:5044
+#      - 50000:50000/tcp
+#      - 50000:50000/udp
+#      - 9600:9600
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+      LOGSTASH_INTERNAL_PASSWORD: ${LOGSTASH_INTERNAL_PASSWORD:-}
+    networks:
+      - ms-network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+  metricbeat:
+    container_name: Metricbeat
+    build:
+      context: elk/metricbeat
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - metricbeat:/usr/share/metricbeat/data,Z
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:-}
+    networks:
+      - ms-network
+    depends_on:
+      - elasticsearch
+#    restart: unless-stopped
+
+  kibana:
+    container_name: Kibana
+    build:
+      context: elk/kibana/
+      args:
+        ELASTIC_VERSION: ${ELASTIC_VERSION}
+    volumes:
+      - ./elk/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro,Z
+      - kibana:/usr/share/kibana
+#    ports:
+#      - 5601:5601
+    environment:
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:-}
+    networks:
+      - ms-network
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+
+
+  prometheus:
+    container_name: Prometheus
+    image: prom/prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+#    ports:
+#      - 41000:9090
+    networks:
+      - ms-network
+
+  grafana:
+    container_name: Grafana
+    image: grafana/grafana
+    volumes:
+      - ./grafana/config/grafana.ini:/etc/grafana/grafana.ini
+      - grafana:/var/lib/grafana
+#    ports:
+#      - 3000:3000
+    networks:
+      - ms-network
+
+  zipkin:
+    container_name: Zipkin
+    image: openzipkin/zipkin:latest
+#    ports:
+#      - 43000:9411
+    networks:
+      - ms-network
+    restart: unless-stopped
+  ############### SERVICES ################
 
   resource:
     container_name: Resource
     build: ./resource
     networks:
       - ms-network
-#    ports:
-#          - '5005:5005'
+    restart: unless-stopped
+    ports:
+      - '5007:5007'
+      - '40000:8080'
     links:
       - "config:config"
-#    environment:
-#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    environment:
+      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
     depends_on:
       db:
         condition: service_started
@@ -107,6 +264,7 @@ services:
   song:
     container_name: Song
     build: ./song
+    restart: unless-stopped
 #    ports:
 #      - '8081:8080'
     networks:
@@ -124,6 +282,7 @@ services:
   resource-processor:
     container_name: Processor
     build: ./processor
+    restart: unless-stopped
     networks:
       - ms-network
     links:
@@ -138,6 +297,7 @@ services:
         condition: service_started
   storage:
     container_name: Storage
+    restart: unless-stopped
     build: ./storage
     networks:
       - ms-network
@@ -148,6 +308,17 @@ services:
       - '8081:8080'
     #    environment:
     #      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5008
+
+#################### NETWORKS #############################
+
 networks:
   ms-network:
     name: ms-network
+
+#################### VOLUMES #############################
+volumes:
+  setup:
+  elasticsearch:
+  metricbeat:
+  grafana:
+  kibana:

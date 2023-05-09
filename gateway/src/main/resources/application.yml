@@ -1,5 +1,7 @@
 server:
   port: 8080
+  error:
+    include-message: always
 
 eureka:
   instance:
@@ -8,12 +10,42 @@ eureka:
     service-url:
       defaultZone: http://eureka:8761/eureka/
 
+spring.zipkin.skip.pattern:
+  - /actuator
+  - /kibana
+  - /zipkin
+  - /grafana
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-components: always
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://zipkin:9411/api/v2/spans
+
 logging:
   level:
-    org:
-      springframework: debug
+    xyz.mpdn.gateway: INFO
+    root: INFO
+#    reactor.netty.http.client: DEBUG
+  pattern:
+    level: "%5p [${spring.application.name},%X{type:-application}, %X{traceId:-},%X{spanId:-}]"
 
 spring:
+  profiles:
+    active: dev
   application:
     name: gateway-service
   cloud:
@@ -37,3 +69,18 @@ spring:
           uri: http://eureka:8761
           predicates:
             - Path=/eureka/**,/eureka**
+        - id: zipkin
+          uri: http://zipkin:9411
+          predicates:
+            - Path=/zipkin/**,/zipkin**
+        - id: grafana
+          uri: http://grafana:3000
+          predicates:
+            - Path=/grafana/**,/grafana**
+          filters:
+            - PreserveHostHeader
+        - id: kibana
+          uri: http://kibana:5601
+          predicates:
+            - Path=/kibana/**,/kibana**
+

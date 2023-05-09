@@ -45,7 +45,9 @@ public class ResourceController {
 
     @GetMapping
     public Map<String, String> getServiceName() {
+        log.error("test");
         return new HashMap<>() {{
+
             put("service", serviceName);
         }};
     }

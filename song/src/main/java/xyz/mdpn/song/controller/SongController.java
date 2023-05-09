@@ -39,6 +39,11 @@ public class SongController {
         return song.orElseThrow(HTTPNotFoundException::new);
     }
 
+    @GetMapping(value = "server_error")
+    public Song throwInternalServer() {
+        throw new RuntimeException("Internal server error");
+    }
+
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE})
     public Song postSong(@Valid @RequestBody Song song) {
         log.debug("Saving song {}", song);
