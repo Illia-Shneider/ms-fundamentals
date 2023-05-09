@@ -1,0 +1,22 @@
+metricbeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+
+metricbeat.modules:
+- module: prometheus
+  period: 10s
+  metricsets: ["collector"]
+  hosts: ["resource:8080/actuator/prometheus"]
+#  metrics_path:  '/federate'
+#  query:
+#    'match[]': '{__name__!=""}'
+    
+processors:
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+
+output.elasticsearch:
+  hosts: '${ELASTICSEARCH_HOSTS:elasticsearch:9200}'
+  username: 'elastic'
+  password: '${ELASTIC_PASSWORD:}'
+
