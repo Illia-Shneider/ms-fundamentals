@@ -26,7 +26,7 @@ public class SecurityConfig {
                                 .requestMatchers("/actuator/**").permitAll()
                                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/v1/storage")).hasRole("admin")
                                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.DELETE, "/api/v1/storage/**")).hasRole("admin")
-                                .anyRequest().authenticated()
+                                .anyRequest().permitAll()
                 )
                 .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
                 .build();
