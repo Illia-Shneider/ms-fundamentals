@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,6 +27,7 @@ import xyz.mpdn.resource.service.StorageService;
 import xyz.mpdn.resource.validator.MimeType;
 
 import java.io.IOException;
+import java.security.Principal;
 import java.util.*;
 
 @Slf4j
@@ -44,10 +46,8 @@ public class ResourceController {
     private String serviceName;
 
     @GetMapping
-    public Map<String, String> getServiceName() {
-        log.error("test");
+    public Map<String, Object> getServiceName(JwtAuthenticationToken jwtToken, Principal principal) {
         return new HashMap<>() {{
-
             put("service", serviceName);
         }};
     }
@@ -72,11 +72,12 @@ public class ResourceController {
         List<Long> ids = new ArrayList<>();
 
         rs.forEach(r -> {
-                    try {
-                        s3Service.delete(r.getBucket(), r.getPath(), r.getUuid());
-                        ids.add(r.getId());
-                    }catch (Exception ignored){}
-                });
+            try {
+                s3Service.delete(r.getBucket(), r.getPath(), r.getUuid());
+                ids.add(r.getId());
+            } catch (Exception ignored) {
+            }
+        });
 
         resourceRepository.deleteAllById(ids);
 
@@ -170,14 +171,14 @@ public class ResourceController {
         var storage = storageService.getStorage(StorageType.PERMANENT);
 
         boolean result = s3Service.move(
-                        resource.getBucket(),
-                        resource.getPath(),
-                        storage.getBucket(),
-                        storage.getPath(),
-                        resource.getUuid()
-                );
+                resource.getBucket(),
+                resource.getPath(),
+                storage.getBucket(),
+                storage.getPath(),
+                resource.getUuid()
+        );
 
-        if(result) {
+        if (result) {
             resource.setBucket(storage.getBucket())
                     .setPath(storage.getPath());
 

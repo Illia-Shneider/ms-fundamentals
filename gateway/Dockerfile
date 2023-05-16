@@ -12,6 +12,7 @@ RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
 FROM eclipse-temurin:17-jre-alpine
 RUN apk add bash
+RUN apk add curl
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring
 

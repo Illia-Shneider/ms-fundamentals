@@ -48,6 +48,19 @@ spring:
     active: dev
   application:
     name: gateway-service
+  security:
+    oauth2:
+     client:
+       registration:
+         keycloak:
+           client-id: msFundamentals
+           authorization-grant-type: authorization_code
+           scope: openid
+       provider:
+         keycloak:
+           issuer-uri: http://host.docker.internal:43000/realms/msFundamentals
+           user-name-attribute: preferred_username
+
   cloud:
     gateway:
       routes:
@@ -59,6 +72,10 @@ spring:
           uri: lb://RESOURCE-SERVICE
           predicates:
             - Path=/api/v1/resource**,/api/v1/resource/**
+        - id: storage
+          uri: lb://STORAGE-SERVICE
+          predicates:
+            - Path=/api/v1/storage**,/api/v1/storage/**
         - id: eureka
           uri: http://eureka:8761
           predicates:
@@ -83,4 +100,6 @@ spring:
           uri: http://kibana:5601
           predicates:
             - Path=/kibana/**,/kibana**
+      default-filters:
+        - TokenRelay
 

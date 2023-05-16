@@ -35,11 +35,11 @@ services:
     build: ./gateway
     ports:
       - '8080:8080'
-      - '5006:5006'
+#      - '5006:5006'
     networks:
       - ms-network
-    environment:
-      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
+#    environment:
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006
     restart: unless-stopped
   eureka:
     container_name: Eureka
@@ -56,9 +56,9 @@ services:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=supersecret
     image: quay.io/minio/minio:latest
-    ports:
-      - '9000:9000'
-      - '9001:9001'
+#    ports:
+#      - '9000:9000'
+#      - '9001:9001'
     volumes:
       - ./minio:/data
     restart: unless-stopped
@@ -79,8 +79,8 @@ services:
     container_name: Adminer
     image: adminer
     restart: unless-stopped
-    ports:
-      - '8082:8080'
+#    ports:
+#      - '8082:8080'
     networks:
       - ms-network
   config:
@@ -99,6 +99,31 @@ services:
 #      timeout: 5s
 #      retries: 3
 #      start_period: 15s
+
+#  redis:
+#    image: redis:7
+#    container_name: redis
+##    ports:
+##      - 6379:6379
+#    networks:
+#      - ms-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1 # Use quay.io/keycloak:17.0.0-legacy on Intel processors
+    container_name: Keycloak
+    volumes:
+      - ./keycloak:/opt/jboss/keycloak/imports
+    command:
+      start-dev --import-realm
+    environment:
+      - KEYCLOAK_USER=user
+      - KEYCLOAK_PASSWORD=password
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KEYCLOAK_IMPORT=/opt/jboss/keycloak/imports/realm-export.json
+    ports:
+      - 43000:8080
+
 ################# ELK ###################
 
   setup:
@@ -190,7 +215,7 @@ services:
       - ms-network
     depends_on:
       - elasticsearch
-#    restart: unless-stopped
+    restart: unless-stopped
 
   kibana:
     container_name: Kibana
@@ -221,6 +246,7 @@ services:
 #      - 41000:9090
     networks:
       - ms-network
+    restart: unless-stopped
 
   grafana:
     container_name: Grafana
@@ -232,6 +258,7 @@ services:
 #      - 3000:3000
     networks:
       - ms-network
+    restart: unless-stopped
 
   zipkin:
     container_name: Zipkin
@@ -249,13 +276,13 @@ services:
     networks:
       - ms-network
     restart: unless-stopped
-    ports:
-      - '5007:5007'
-      - '40000:8080'
+#    ports:
+#      - '5007:5007'
+#      - '40000:8080'
     links:
       - "config:config"
-    environment:
-      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
+#    environment:
+#      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007
     depends_on:
       db:
         condition: service_started
@@ -303,9 +330,9 @@ services:
       - ms-network
     links:
       - "config:config"
-    ports:
+#    ports:
 #      - '5008:5008'
-      - '8081:8080'
+#      - '8081:8080'
     #    environment:
     #      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5008
 
